@@ -14,3 +14,10 @@ provider "registry.terraform.io/yandex-cloud/yandex" {
     "h1:4MukWa3jIQhpo9y6bwBu3xVMh6uSJdoyCKkJMhv38cA=",
   ]
 }
+
+provider "registry.terraform.io/yi-jiayu/telegram" {
+  version = "0.3.1"
+  hashes = [
+    "h1:vmhUoxopgcMKBwmnd2bM7rzPC9M7PtXf32wtjCKfUpE=",
+  ]
+}

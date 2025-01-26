@@ -3,6 +3,9 @@ terraform {
     yandex = {
       source = "yandex-cloud/yandex"
     }
+    telegram = {
+      source = "yi-jiayu/telegram"
+    }
   }
   required_version = ">= 0.13"
 }
@@ -14,6 +17,10 @@ provider "yandex" {
   folder_id                = var.folder_id
 }
 
+provider "telegram" {
+  bot_token = var.tg_bot_key
+}
+
 variable "cloud_id" {
   type        = string
   description = "Cloud id"
@@ -22,6 +29,11 @@ variable "cloud_id" {
 variable "folder_id" {
   type        = string
   description = "Folder id"
+}
+
+variable "tg_bot_key" {
+  type        = string
+  description = "Telegram bot key"
 }
 
 resource "yandex_iam_service_account" "sa-hw-1" {
@@ -42,6 +54,7 @@ resource "yandex_function" "cheatsheet-func" {
   runtime     = "python37"
   entrypoint  = "main.handler"
   memory      = "128"
+  environment = { "TELEGRAM_BOT_TOKEN" = var.tg_bot_key }
   content {
     zip_filename = archive_file.code_zip.output_path
   }
@@ -58,4 +71,8 @@ resource "yandex_function_iam_binding" "public-cheatsheet-func" {
 
 output "cheatsheet-func-url" {
   value = "https://functions.yandexcloud.net/${yandex_function.cheatsheet-func.id}"
+}
+
+resource "telegram_bot_webhook" "webhook" {
+  url = "https://api.telegram.org/bot${var.tg_bot_key}/setWebhook?url=https://functions.yandexcloud.net/${yandex_function.cheatsheet-func.id}"
 }
