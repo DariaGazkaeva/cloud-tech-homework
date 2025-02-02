@@ -48,15 +48,28 @@ resource "archive_file" "code_zip" {
 }
 
 resource "yandex_function" "cheatsheet-func" {
-  name        = "cheatsheet-func"
-  description = "function for cheatsheet homework"
-  user_hash   = archive_file.code_zip.output_sha256
-  runtime     = "python37"
-  entrypoint  = "main.handler"
-  memory      = "128"
-  environment = { "TELEGRAM_BOT_TOKEN" = var.tg_bot_key }
+  name               = "cheatsheet-func"
+  description        = "function for cheatsheet homework"
+  user_hash          = archive_file.code_zip.output_sha256
+  runtime            = "python37"
+  entrypoint         = "main.handler"
+  memory             = "128"
+  service_account_id = yandex_iam_service_account.sa-hw-1.id
+  execution_timeout  = "15"
+  environment = {
+    "TELEGRAM_BOT_TOKEN" = var.tg_bot_key,
+    "FOLDER_ID"          = var.folder_id,
+    "SA_API_KEY"         = yandex_iam_service_account_api_key.sa_api_key.secret_key
+  }
   content {
     zip_filename = archive_file.code_zip.output_path
+  }
+  mounts {
+    name = "mnt"
+    mode = "rw"
+    object_storage {
+      bucket = yandex_storage_bucket.bucket.bucket
+    }
   }
 }
 
@@ -83,6 +96,16 @@ resource "yandex_resourcemanager_folder_iam_member" "sa-editor" {
   role      = "storage.editor"
   member    = "serviceAccount:${yandex_iam_service_account.sa-hw-1.id}"
 }
+resource "yandex_resourcemanager_folder_iam_member" "sa-gpt-user" {
+  folder_id = var.folder_id
+  role      = "ai.languageModels.user"
+  member    = "serviceAccount:${yandex_iam_service_account.sa-hw-1.id}"
+}
+resource "yandex_resourcemanager_folder_iam_member" "sa-ocr-user" {
+  folder_id = var.folder_id
+  role      = "ai.vision.user"
+  member    = "serviceAccount:${yandex_iam_service_account.sa-hw-1.id}"
+}
 
 // Create Static Access Keys
 resource "yandex_iam_service_account_static_access_key" "sa-static-key" {
@@ -98,6 +121,12 @@ resource "yandex_storage_bucket" "bucket" {
 
 resource "yandex_storage_object" "object" {
   bucket = yandex_storage_bucket.bucket.id
-  key    = "instruction_gpt"
+  key    = "instruction_gpt.json"
   source = "body.json"
+}
+
+// Service account API KEY for Yandex GPT
+resource "yandex_iam_service_account_api_key" "sa_api_key" {
+  service_account_id = yandex_iam_service_account.sa-hw-1.id
+  description        = "service account api key for yandex gpt"
 }

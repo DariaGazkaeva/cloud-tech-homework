@@ -1,5 +1,5 @@
 {
-    "modelUri": "gpt://<folder_id>/yandexgpt-lite",
+    "modelUri": "gpt://<folder_id>/yandexgpt",
     "completionOptions": {
         "stream": false,
         "temperature": 0.1,

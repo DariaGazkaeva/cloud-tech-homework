@@ -22,6 +22,32 @@ OTHER_ERROR_MESSAGE = "Я могу обработать только текст�
 
 sent_group_error = {}
 
+URL = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+
+
+def get_response_from_gpt(question):
+    object = open('/function/storage/mnt/instruction_gpt.json').read()
+    request = json.loads(object)
+
+    request['modelUri'] = f"gpt://{os.environ.get('FOLDER_ID')}/yandexgpt"
+
+    request['messages'][1]['text'] = question
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Api-Key {os.environ.get('SA_API_KEY')}",
+        "x-folder-id": os.environ.get('FOLDER_ID'),
+    }
+
+    response = requests.post(
+        URL,
+        headers=headers,
+        json=request,
+    )
+
+    print(response.content)
+    return response
+
 
 def send_message(text, message):
     """Отправка сообщения пользователю Telegram."""
@@ -57,7 +83,14 @@ def handler(event, context):
         if text in GLOBAL_COMMANDS:
             send_message(WELCOME_MESSAGE, message_in)
         else:
-            send_message('answer 1', message_in)
+            response = get_response_from_gpt(text)
+
+            if not response.ok:
+                send_message(API_ERROR_MESSAGE, message_in)
+                return FUNC_RESPONSE
+            
+            answer = response.json()['result']['alternatives'][0]['message']['text']
+            send_message(answer, message_in)
         return FUNC_RESPONSE
 
     if "media_group_id" in message_in:
