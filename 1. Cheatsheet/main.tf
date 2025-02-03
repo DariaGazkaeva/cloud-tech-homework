@@ -60,15 +60,18 @@ resource "yandex_function" "cheatsheet-func" {
   service_account_id = yandex_iam_service_account.sa-hw-1.id
   execution_timeout  = "15"
   environment = {
-    "TELEGRAM_BOT_TOKEN" = var.tg_bot_key,
-    "FOLDER_ID"          = var.folder_id,
-    "SA_API_KEY"         = yandex_iam_service_account_api_key.sa_api_key.secret_key
+    "BUCKET_NAME"         = yandex_storage_bucket.bucket.bucket
+    "GPT_INSTRUCTION_KEY" = yandex_storage_object.object.key
+    "OCR_INSTRUCTION_KEY" = yandex_storage_object.ocr_object.key
+    "TELEGRAM_BOT_TOKEN"  = var.tg_bot_key,
+    "FOLDER_ID"           = var.folder_id,
+    "SA_API_KEY"          = yandex_iam_service_account_api_key.sa_api_key.secret_key
   }
   content {
     zip_filename = archive_file.code_zip.output_path
   }
   mounts {
-    name = "mnt"
+    name = yandex_storage_bucket.bucket.bucket
     mode = "rw"
     object_storage {
       bucket = yandex_storage_bucket.bucket.bucket

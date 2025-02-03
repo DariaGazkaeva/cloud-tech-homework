@@ -12,6 +12,9 @@ FUNC_RESPONSE = {
 
 GLOBAL_COMMANDS = ["/start", "/help"]
 
+BUCKET_NAME = os.environ.get("BUCKET_NAME")
+GPT_INSTRUCTION_KEY = os.environ.get("GPT_INSTRUCTION_KEY")
+OCR_INSTRUCTION_KEY = os.environ.get("OCR_INSTRUCTION_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
@@ -35,7 +38,7 @@ def send_typing(message):
 
 
 def get_response_from_gpt(question):
-    object = open('/function/storage/mnt/instruction_gpt.json').read()
+    object = open(f'/function/storage/{BUCKET_NAME}/{GPT_INSTRUCTION_KEY}').read()
     request = json.loads(object)
 
     request['modelUri'] = f"gpt://{os.environ.get('FOLDER_ID')}/yandexgpt"
@@ -58,7 +61,7 @@ def get_response_from_gpt(question):
 
 
 def get_response_from_ocr(photo):
-    object = open('/function/storage/mnt/ocr_body.json').read()
+    object = open(f'/function/storage/{BUCKET_NAME}/{OCR_INSTRUCTION_KEY}').read()
     request = json.loads(object)
 
     request['content'] = photo
