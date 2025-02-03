@@ -36,17 +36,20 @@ variable "tg_bot_key" {
   description = "Telegram bot key"
 }
 
+// Create service account
 resource "yandex_iam_service_account" "sa-hw-1" {
   name        = "sa-hw-1"
   description = "service account for cheatsheet homework"
 }
 
+// Create archive zip with function code
 resource "archive_file" "code_zip" {
   type        = "zip"
   output_path = "func.zip"
   source_dir  = "src"
 }
 
+// Create cloud function
 resource "yandex_function" "cheatsheet-func" {
   name               = "cheatsheet-func"
   description        = "function for cheatsheet homework"
@@ -73,6 +76,7 @@ resource "yandex_function" "cheatsheet-func" {
   }
 }
 
+// Make function public
 resource "yandex_function_iam_binding" "public-cheatsheet-func" {
   function_id = yandex_function.cheatsheet-func.id
   role        = "serverless.functions.invoker"
@@ -82,25 +86,26 @@ resource "yandex_function_iam_binding" "public-cheatsheet-func" {
   ]
 }
 
-output "cheatsheet-func-url" {
-  value = "https://functions.yandexcloud.net/${yandex_function.cheatsheet-func.id}"
-}
-
+// Set telegram webhook
 resource "telegram_bot_webhook" "webhook" {
   url = "https://api.telegram.org/bot${var.tg_bot_key}/setWebhook?url=https://functions.yandexcloud.net/${yandex_function.cheatsheet-func.id}"
 }
 
-// Grant permissions
+// Grant permissions to modify bucket and objects
 resource "yandex_resourcemanager_folder_iam_member" "sa-editor" {
   folder_id = var.folder_id
   role      = "storage.editor"
   member    = "serviceAccount:${yandex_iam_service_account.sa-hw-1.id}"
 }
+
+// Grant permissions to use language models
 resource "yandex_resourcemanager_folder_iam_member" "sa-gpt-user" {
   folder_id = var.folder_id
   role      = "ai.languageModels.user"
   member    = "serviceAccount:${yandex_iam_service_account.sa-hw-1.id}"
 }
+
+// Grant permissions to use OCR service
 resource "yandex_resourcemanager_folder_iam_member" "sa-ocr-user" {
   folder_id = var.folder_id
   role      = "ai.vision.user"
@@ -119,12 +124,14 @@ resource "yandex_storage_bucket" "bucket" {
   secret_key = yandex_iam_service_account_static_access_key.sa-static-key.secret_key
 }
 
+// Object for body of YandexGPT request
 resource "yandex_storage_object" "object" {
   bucket = yandex_storage_bucket.bucket.id
   key    = "instruction_gpt.json"
-  source = "body.json"
+  source = "gpt_body.json"
 }
 
+// Object for body of OCR request
 resource "yandex_storage_object" "ocr_object" {
   bucket = yandex_storage_bucket.bucket.id
   key    = "ocr_body.json"

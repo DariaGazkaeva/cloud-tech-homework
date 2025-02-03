@@ -1,13 +1,13 @@
-import requests
 import os
 import json
 import base64
+import requests
 
 """Telegram Bot on Yandex Cloud Function."""
 
 FUNC_RESPONSE = {
     'statusCode': 200,
-    'body': ''
+    'body': '',
 }
 
 GLOBAL_COMMANDS = ["/start", "/help"]
@@ -21,11 +21,10 @@ PHOTO_ERROR_MESSAGE = "Я не могу обработать эту фотогр
 PHOTOS_ERROR_MESSAGE = "Я могу обработать только одну фотографию."
 OTHER_ERROR_MESSAGE = "Я могу обработать только текстовое сообщение или фотографию."
 
-sent_group_error = {}
-
 URL_GPT = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
 URL_OCR = "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText"
 
+sent_group_error = {}
 
 def send_typing(message):
     if "media_group_id" in message and message['media_group_id'] in sent_group_error:
@@ -86,16 +85,24 @@ def get_file_data(id):
     return base64.b64encode(file_data.content).decode("ascii")
 
 
-def send_message(text, message):
+def send_message(text, message_id, chat_id):
     """Отправка сообщения пользователю Telegram."""
-
-    message_id = message['message_id']
-    chat_id = message['chat']['id']
     reply_message = {'chat_id': chat_id,
                      'text': text,
                      'reply_to_message_id': message_id}
 
     requests.post(url=f'{TELEGRAM_API_URL}/sendMessage', json=reply_message)
+
+
+def reply_with_gpt(query, message_id, chat_id):
+    response = get_response_from_gpt(query)
+    
+    if not response.ok:
+        send_message(API_ERROR_MESSAGE, message_id, chat_id)
+        return FUNC_RESPONSE
+    
+    answer = response.json()['result']['alternatives'][0]['message']['text']
+    send_message(answer, message_id, chat_id)
 
 
 def handler(event, context):
@@ -112,49 +119,38 @@ def handler(event, context):
     message_in = update['message']
     send_typing(message_in)
 
+    message_id = message_in['message_id']
+    chat_id = message_in['chat']['id']
+
     if 'text' not in message_in and 'photo' not in message_in:
-        send_message(OTHER_ERROR_MESSAGE, message_in)
+        send_message(OTHER_ERROR_MESSAGE, message_id, chat_id)
         return FUNC_RESPONSE
     
     if 'text' in message_in:
         text = message_in['text']
         if text in GLOBAL_COMMANDS:
-            send_message(WELCOME_MESSAGE, message_in)
+            send_message(WELCOME_MESSAGE, message_id, chat_id)
         else:
-            response = get_response_from_gpt(text)
-
-            if not response.ok:
-                send_message(API_ERROR_MESSAGE, message_in)
-                return FUNC_RESPONSE
-            
-            answer = response.json()['result']['alternatives'][0]['message']['text']
-            send_message(answer, message_in)
+            reply_with_gpt(text, message_id, chat_id)
         return FUNC_RESPONSE
 
     if "media_group_id" in message_in:
         media_group_id = message_in['media_group_id']
         if media_group_id not in sent_group_error:
-            send_message(PHOTOS_ERROR_MESSAGE, message_in)
+            send_message(PHOTOS_ERROR_MESSAGE, message_id, chat_id)
             sent_group_error[media_group_id] = True
         return FUNC_RESPONSE 
     
-    elif 'photo' in message_in:
+    if 'photo' in message_in:
         file_id = message_in['photo'][-1]['file_id']
         file = get_file_data(file_id)
         response = get_response_from_ocr(file)
 
         if not response.ok:
-            send_message(PHOTO_ERROR_MESSAGE, message_in)
+            send_message(PHOTO_ERROR_MESSAGE, message_id, chat_id)
             return FUNC_RESPONSE
         
         text = response.json()['result']['textAnnotation']['fullText']
-
-        gpt_response = get_response_from_gpt(text)
-
-        if not gpt_response.ok:
-            send_message(API_ERROR_MESSAGE, message_in)
-            return FUNC_RESPONSE
-
-        answer = gpt_response.json()['result']['alternatives'][0]['message']['text']
-        send_message(answer, message_in)
+        reply_with_gpt(text, message_id, chat_id)
+    
     return FUNC_RESPONSE
