@@ -27,6 +27,14 @@ URL_GPT = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
 URL_OCR = "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText"
 
 
+def send_typing(message):
+    if "media_group_id" in message and message['media_group_id'] in sent_group_error:
+        return
+    url = f'{TELEGRAM_API_URL}/sendChatAction'
+    data = {'chat_id': message['chat']['id'], 'action': 'typing'}
+    requests.post(url, data=data)
+
+
 def get_response_from_gpt(question):
     object = open('/function/storage/mnt/instruction_gpt.json').read()
     request = json.loads(object)
@@ -102,6 +110,7 @@ def handler(event, context):
         return FUNC_RESPONSE
 
     message_in = update['message']
+    send_typing(message_in)
 
     if 'text' not in message_in and 'photo' not in message_in:
         send_message(OTHER_ERROR_MESSAGE, message_in)
