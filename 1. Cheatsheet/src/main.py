@@ -120,7 +120,6 @@ def handler(event, context):
         return FUNC_RESPONSE
 
     message_in = update['message']
-    send_typing(message_in)
 
     message_id = message_in['message_id']
     chat_id = message_in['chat']['id']
@@ -134,6 +133,7 @@ def handler(event, context):
         if text in GLOBAL_COMMANDS:
             send_message(WELCOME_MESSAGE, message_id, chat_id)
         else:
+            send_typing(message_in)
             reply_with_gpt(text, message_id, chat_id)
         return FUNC_RESPONSE
 
@@ -145,6 +145,7 @@ def handler(event, context):
         return FUNC_RESPONSE 
     
     if 'photo' in message_in:
+        send_typing(message_in)
         file_id = message_in['photo'][-1]['file_id']
         file = get_file_data(file_id)
         response = get_response_from_ocr(file)
