@@ -125,6 +125,12 @@ resource "yandex_storage_object" "object" {
   source = "body.json"
 }
 
+resource "yandex_storage_object" "ocr_object" {
+  bucket = yandex_storage_bucket.bucket.id
+  key    = "ocr_body.json"
+  source = "ocr_body.json"
+}
+
 // Service account API KEY for Yandex GPT
 resource "yandex_iam_service_account_api_key" "sa_api_key" {
   service_account_id = yandex_iam_service_account.sa-hw-1.id
